@@ -1,0 +1,28 @@
+version: '3.7'
+
+services:
+  db_vehicle:
+    image: mysql:8.0.23
+    platform: linux/amd64
+    container_name: moaseoul-mysql
+    command:
+      - --explicit_defaults_for_timestamp
+      - --lower_case_table_names=1
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --range_optimizer_max_mem_size=16777216
+      - --skip-character-set-client-handshake
+    restart: always
+    environment:
+      MYSQL_DATABASE: "${MYSQL_DATABASE}"
+      MYSQL_USER: "${MYSQL_USER}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD}"
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
+      TZ: Asia/Seoul
+    volumes:
+      - ./docker/moaseoul/db:/var/lib/mysql
+      - /etc/localtime:/etc/localtime:ro
+      - ./docker/moaseoul/initdb.d:/docker-entrypoint-initdb.d
+    ports:
+      - "3306:3306"
