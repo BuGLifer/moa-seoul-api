@@ -4,6 +4,7 @@ build/
 !../gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
+.DS_Store
 
 ### STS ###
 .apt_generated
@@ -36,3 +37,13 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Docker ###
+docker/moaseoul/db/
+docker/*.env
+!docker/sample.env
+
+### Application Configuration ###
+src/main/resources/application-*.yml
+!src/main/resources/application-sample.yml
+
