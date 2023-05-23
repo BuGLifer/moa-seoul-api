@@ -1,29 +1,56 @@
 package kr.buglifer.moaseoul.bot;
 
+import com.squareup.moshi.Moshi;
+import kr.buglifer.moaseoul.configuration.properties.ChatGPTProperties;
 import kr.buglifer.moaseoul.utility.OkHttpUtility;
-import lombok.*;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import okhttp3.Headers;
 import okhttp3.MediaType;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import org.springframework.boot.configurationprocessor.json.JSONArray;
 import org.springframework.boot.configurationprocessor.json.JSONException;
 import org.springframework.boot.configurationprocessor.json.JSONObject;
 import org.springframework.http.HttpMethod;
+import org.springframework.stereotype.Service;
 
+@Service
 @RequiredArgsConstructor
 public class BotService {
 
-    public String generateBotCourse() {
+    private final ChatGPTProperties chatGPTProperties;
+
+    public JSONArray generateBotCourse() {
         final String BOT_API_URL = "https://api.openai.com/v1/chat/completions";
         Response botResponse = OkHttpUtility.request(BOT_API_URL, generateHeaders(), generateRequestBody(), HttpMethod.POST);
-
+        BotAPIResponse botAPIResponse = null;
         try {
-
+            botAPIResponse = new Moshi.Builder()
+                    .build()
+                    .adapter(BotAPIResponse.class)
+                    .fromJson(botResponse.body()
+                                         .source());
             botResponse.close();
         } catch (Exception e) {
             return null;
         }
-        return "OK";
+        if (botAPIResponse == null || botAPIResponse.getChoices() == null || botAPIResponse.getChoices().length == 0 || botAPIResponse.getChoices()[0]
+                .getMessage() == null || botAPIResponse.getChoices()[0]
+                .getMessage()
+                .getContent() == null) {
+            return null;
+        }
+        String botMessage = botAPIResponse.getChoices()[0]
+                .getMessage()
+                .getContent();
+        try {
+            JSONArray result = new JSONArray(botMessage);
+            return result;
+        } catch (JSONException e) {
+            return null;
+        }
     }
 
     private RequestBody generateRequestBody() {
@@ -40,10 +67,12 @@ public class BotService {
 
         try {
             jsonObjectBody.put(PROPERTY_MODEL, VALUE_MODEL);
+            JSONArray jsonArrayMessage = new JSONArray();
             JSONObject jsonObjectMessage = new JSONObject();
             jsonObjectMessage.put(PROPERTY_ROLE, VALUE_ROLE);
             jsonObjectMessage.put(PROPERTY_CONTENT, TEST_FRONT_MESSAGE + APPENDER_MESSAGE);
-            jsonObjectBody.put(PROPERTY_MESSAGES, jsonObjectMessage);
+            jsonArrayMessage.put(jsonObjectMessage);
+            jsonObjectBody.put(PROPERTY_MESSAGES, jsonArrayMessage);
         } catch (JSONException e) {
             return null;
         }
@@ -53,17 +82,42 @@ public class BotService {
     private Headers generateHeaders() {
         final String AUTHORIZATION_HEADER_KEY = "Authorization";
         final String BEARER_VALUE = "Bearer ";
-        final String BOT_KEY = "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";
-        return new Headers.Builder().add(AUTHORIZATION_HEADER_KEY, BEARER_VALUE + BOT_KEY)
+        return new Headers.Builder().add(AUTHORIZATION_HEADER_KEY, BEARER_VALUE + chatGPTProperties.getKey())
                                     .build();
     }
 
     @Getter
     @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class BotAPIResponse {
 
+        private String id;
+
+        private String object;
+
+        private Long created;
+
+        private String model;
+
+        private Choices[] choices;
+
+        @Getter
+        @Setter
+        public static class Choices {
+
+            private String finishReason;
+
+            private Long index;
+
+            private Message message;
+
+            @Getter
+            @Setter
+            public static class Message {
+
+                private String role;
+
+                private String content;
+            }
+        }
     }
 }

@@ -9,3 +9,5 @@ spring:
     username:
     password:
     driver-class-name:
+chat-gpt:
+  key:
