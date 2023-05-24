@@ -3,18 +3,21 @@ package kr.buglifer.moaseoul.bot;
 import com.squareup.moshi.Moshi;
 import kr.buglifer.moaseoul.configuration.properties.ChatGPTProperties;
 import kr.buglifer.moaseoul.utility.OkHttpUtility;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import okhttp3.Headers;
 import okhttp3.MediaType;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-import org.springframework.boot.configurationprocessor.json.JSONArray;
-import org.springframework.boot.configurationprocessor.json.JSONException;
-import org.springframework.boot.configurationprocessor.json.JSONObject;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.IntStream;
 
 @Service
 @RequiredArgsConstructor
@@ -22,9 +25,13 @@ public class BotService {
 
     private final ChatGPTProperties chatGPTProperties;
 
-    public JSONArray generateBotCourse() {
+    public BotCourseResponse generateBotCourse(BotCourseRequest request) {
+        BotCourseResponse validateRequest = validateRequest(request);
+        if (!validateRequest.isSuccess()) {
+            return validateRequest;
+        }
         final String BOT_API_URL = "https://api.openai.com/v1/chat/completions";
-        Response botResponse = OkHttpUtility.request(BOT_API_URL, generateHeaders(), generateRequestBody(), HttpMethod.POST);
+        Response botResponse = OkHttpUtility.request(BOT_API_URL, generateHeaders(), generateRequestBody(request), HttpMethod.POST);
         BotAPIResponse botAPIResponse = null;
         try {
             botAPIResponse = new Moshi.Builder()
@@ -47,15 +54,56 @@ public class BotService {
                 .getContent();
         try {
             JSONArray result = new JSONArray(botMessage);
-            return result;
+            return toBotCourseResponse(result);
         } catch (JSONException e) {
             return null;
         }
     }
 
-    private RequestBody generateRequestBody() {
-        final String APPENDER_MESSAGE = " 라는 내용을 서울특별시에서 3가지 위,경도 좌표 알려줄래? 답변은 아래 같은 json array 형태로 알려줘 [{name:홍대 / 신촌 지역,latitude:37.5546, longtitude:126.9246,reason:놀기좋아서},...]";
-        final String TEST_FRONT_MESSAGE = "한국 정서를 전부 느낄 수 있는 장소를 추천해줄래?";
+    private BotCourseResponse validateRequest(BotCourseRequest request) {
+        if (request.getMessage() == null || request.getMessage()
+                                                   .isEmpty()) {
+            final String FAIL_REASON = "Message가 존재하지 않습니다.";
+            return new BotCourseResponse(List.of(BotCourseResponse.BotCourseResponseBody.builder()
+                                                                                        .reason(FAIL_REASON)
+                                                                                        .build()), false);
+        }
+        return new BotCourseResponse(null, true);
+    }
+
+    private BotCourseResponse toBotCourseResponse(JSONArray jsonArray) {
+        final String PROPERTY_NAME = "name";
+        final String PROPERTY_LATITUDE = "latitude";
+        final String PROPERTY_LONGITUDE = "longitude";
+        final String PROPERTY_REASON = "reason";
+
+        List<BotCourseResponse.BotCourseResponseBody> botCourseResponseBodyList = new ArrayList<>();
+        IntStream.range(0, jsonArray.length())
+                 .mapToObj(index -> {
+                     try {
+                         return jsonArray.getJSONObject(index);
+                     } catch (JSONException e) {
+                         e.printStackTrace();
+                     }
+                     return null;
+                 })
+                 .forEach(object -> {
+                     BotCourseResponse.BotCourseResponseBody.BotCourseResponseBodyBuilder botCourseResponseBodyBuilder = BotCourseResponse.BotCourseResponseBody.builder();
+                     try {
+                         botCourseResponseBodyBuilder.name((String) object.get(PROPERTY_NAME));
+                         botCourseResponseBodyBuilder.latitude((BigDecimal) object.get(PROPERTY_LATITUDE));
+                         botCourseResponseBodyBuilder.longitude((BigDecimal) object.get(PROPERTY_LONGITUDE));
+                         botCourseResponseBodyBuilder.reason((String) object.get(PROPERTY_REASON));
+                         botCourseResponseBodyList.add(botCourseResponseBodyBuilder.build());
+                     } catch (JSONException e) {
+                         e.printStackTrace();
+                     }
+                 });
+        return new BotCourseResponse(botCourseResponseBodyList, true);
+    }
+
+    private RequestBody generateRequestBody(BotCourseRequest request) {
+        final String APPENDER_MESSAGE = " 라는 내용을 서울특별시에서 3가지 위,경도 좌표 알려줄래? 답변은 아래 같은 json array 형태로 알려줘 [{name:홍대 / 신촌 지역,latitude:37.5546, longitude:126.9246,reason:놀기좋아서},...]";
         final String PROPERTY_MODEL = "model";
         final String PROPERTY_MESSAGES = "messages";
         final String PROPERTY_ROLE = "role";
@@ -70,7 +118,7 @@ public class BotService {
             JSONArray jsonArrayMessage = new JSONArray();
             JSONObject jsonObjectMessage = new JSONObject();
             jsonObjectMessage.put(PROPERTY_ROLE, VALUE_ROLE);
-            jsonObjectMessage.put(PROPERTY_CONTENT, TEST_FRONT_MESSAGE + APPENDER_MESSAGE);
+            jsonObjectMessage.put(PROPERTY_CONTENT, request.getMessage() + APPENDER_MESSAGE);
             jsonArrayMessage.put(jsonObjectMessage);
             jsonObjectBody.put(PROPERTY_MESSAGES, jsonArrayMessage);
         } catch (JSONException e) {
@@ -118,6 +166,42 @@ public class BotService {
 
                 private String content;
             }
+        }
+    }
+
+    @Getter
+    @Setter
+    public static class BotCourseRequest {
+
+        private String message;
+    }
+
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BotCourseResponse {
+
+        List<BotCourseResponseBody> results;
+
+        private boolean success;
+
+        @Getter
+        @Setter
+        @Builder
+        @NoArgsConstructor
+        @AllArgsConstructor
+
+        public static class BotCourseResponseBody {
+
+            private String name;
+
+            private BigDecimal latitude;
+
+            private BigDecimal longitude;
+
+            private String reason;
         }
     }
 }
