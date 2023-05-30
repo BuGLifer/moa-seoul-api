@@ -14,12 +14,12 @@ public class CulturalEventsController {
 
     private final CulturalEventsService culturalEventsService;
 
-    @GetMapping("/health")
+    @GetMapping("/api/health")
     public String health() {
         return "UP";
     }
 
-    @GetMapping("/cultural-events")
+    @GetMapping("/api/cultural-events")
     public ResponseEntity<List<CulturalEvents>> handleGetCulturalEvents() {
         return ResponseEntity.ok(culturalEventsService.readCultrualEvents());
     }

@@ -12,7 +12,7 @@ public class BotController {
 
     private final BotService botService;
 
-    @PostMapping("bot/course")
+    @PostMapping("/api/bot/course")
     public ResponseEntity<BotService.BotCourseResponse> handleGenerateBotCourseRequest(@RequestBody BotService.BotCourseRequest request) {
         return ResponseEntity.ok(botService.generateBotCourse(request));
     }

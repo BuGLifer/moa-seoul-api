@@ -14,7 +14,7 @@ public class CulturalPlaceController {
 
     private final CulturalPlaceService culturalPlaceService;
 
-    @GetMapping("/cultural-places")
+    @GetMapping("/api/cultural-places")
     public ResponseEntity<List<CulturalPlace>> getCulturalPlaces() {
         return ResponseEntity.ok(culturalPlaceService.readCulturalPlaces());
     }

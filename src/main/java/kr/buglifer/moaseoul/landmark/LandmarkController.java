@@ -14,7 +14,7 @@ public class LandmarkController {
 
     private final LandmarkService landmarkService;
 
-    @GetMapping("/landmarks")
+    @GetMapping("/api/landmarks")
     public ResponseEntity<List<Landmark>> getLandmarks() {
         return ResponseEntity.ok(landmarkService.readLandmarks());
     }
